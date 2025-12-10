@@ -52,7 +52,9 @@ export default function SplitStep({ datasetInfo, onComplete, splitInfo }: SplitS
         onComplete(response.split_info);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to split data");
+      const errorMsg = err.response?.data?.detail || err.message || "Failed to split data. Check if backend is running.";
+      setError(errorMsg);
+      console.error("Split error:", err);
     } finally {
       setIsLoading(false);
     }

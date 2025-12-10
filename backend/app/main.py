@@ -358,6 +358,8 @@ async def split_data(request: SplitRequest):
             }
         })
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error during split: {str(e)}")
 
