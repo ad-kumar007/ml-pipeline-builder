@@ -291,9 +291,25 @@ async def split_data(request: SplitRequest):
         )
     
     try:
+        # Drop rows with NaN values for clean split
+        df_clean = df.dropna()
+        if len(df_clean) < 10:
+            raise HTTPException(status_code=400, detail="Not enough valid samples after removing missing values. Need at least 10 rows.")
+        
         # Separate features and target
-        X = df.drop(columns=[request.target_column])
-        y = df[request.target_column]
+        X = df_clean.drop(columns=[request.target_column])
+        y = df_clean[request.target_column]
+        
+        # Check class distribution
+        class_counts = y.value_counts()
+        min_class_count = class_counts.min()
+        
+        if min_class_count < 2:
+            small_classes = class_counts[class_counts < 2].index.tolist()
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Classes {small_classes} have less than 2 samples. Each class needs at least 2 samples for train/test split. Remove these rows or choose a different target column."
+            )
         
         # Handle non-numeric features (simple encoding for demo)
         X_encoded = X.copy()
@@ -301,12 +317,15 @@ async def split_data(request: SplitRequest):
             if X_encoded[col].dtype == 'object':
                 X_encoded[col] = pd.factorize(X_encoded[col])[0]
         
+        # Determine if stratify is possible
+        use_stratify = min_class_count >= 2 and len(y.unique()) > 1
+        
         # Perform split
         X_train, X_test, y_train, y_test = train_test_split(
             X_encoded, y,
             test_size=request.test_size,
             random_state=request.random_state,
-            stratify=y if len(y.unique()) > 1 else None
+            stratify=y if use_stratify else None
         )
         
         # Store in session state
