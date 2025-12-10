@@ -2,7 +2,6 @@
 node_modules/
 __pycache__/
 *.py[cod]
-*$py.class
 venv/
 env/
 
@@ -11,7 +10,6 @@ env/
 out/
 build/
 dist/
-*.egg-info/
 
 # Environment files
 .env
@@ -28,10 +26,6 @@ Thumbs.db
 
 # Logs
 *.log
-npm-debug.log*
-
-# Test files
-test_pipeline.py
 
 # Misc
 .vercel
