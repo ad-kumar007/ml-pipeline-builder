@@ -69,7 +69,10 @@ class TrainRequest(BaseModel):
 
 def df_to_json(df: pd.DataFrame, max_rows: int = 100) -> Dict:
     """Convert DataFrame to JSON-serializable format with preview"""
-    preview_df = df.head(max_rows)
+    preview_df = df.head(max_rows).copy()
+    # Replace NaN/Inf with None for JSON compatibility
+    preview_df = preview_df.replace([np.inf, -np.inf], np.nan)
+    preview_df = preview_df.where(pd.notnull(preview_df), None)
     return {
         "columns": df.columns.tolist(),
         "data": preview_df.values.tolist(),
@@ -129,6 +132,9 @@ async def upload_dataset(file: UploadFile = File(...)):
                 detail="Dataset must have at least 2 columns (features + target)"
             )
         
+        # Handle NaN and Inf values - replace Inf with NaN, then fill NaN with 0 for numeric columns
+        df = df.replace([np.inf, -np.inf], np.nan)
+        
         # Store in session state
         session_state["original_df"] = df.copy()
         session_state["processed_df"] = df.copy()
@@ -141,9 +147,12 @@ async def upload_dataset(file: UploadFile = File(...)):
         session_state["y_test"] = None
         session_state["model"] = None
         
+        # Count NaN values for info
+        nan_count = int(df.isna().sum().sum())
+        
         return JSONResponse({
             "success": True,
-            "message": f"Successfully uploaded {file.filename}",
+            "message": f"Successfully uploaded {file.filename}" + (f" ({nan_count} missing values detected)" if nan_count > 0 else ""),
             "dataset_info": {
                 "filename": file.filename,
                 "rows": len(df),
